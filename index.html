@@ -1,0 +1,134 @@
+<html>
+  <head>
+    <style>
+      body {
+        max-width: 50%;
+        margin: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+      }
+      .image-placeholder {
+        width: 500px;
+        height: auto;
+      }
+      img{
+        width: 100%;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Basic Cloud Vision (Google) Demo -->
+
+    <video autoplay="true" id="videoElement"></video>
+    <div>
+      <input type="file" id="img" name="img" accept="image/*" />
+      <button id="vision_button">Analyze</button>
+    </div>
+	<div class="image-placeholder">
+
+		<img id="image" src="#" alt="your image" />
+	</div>
+    <div id="results"></div>
+
+    <script>
+      // Access camera
+      let base64Image;
+
+      img.onchange = (evt) => {
+        const [file] = img.files;
+        // console.log(file);
+        if (file) {
+          image.src = URL.createObjectURL(file);
+          console.log(URL.createObjectURL(file));
+          getBase64(file, function (result) {
+            // console.log(result)
+            base64Image = result;
+          });
+        }
+      };
+
+      const getBase64 = (file, cb) => {
+        let reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function () {
+          cb(reader.result);
+        };
+        reader.onerror = function (error) {
+          console.log("Error: ", error);
+        };
+      };
+
+      const regexeParsedText = (parsedtext) => {
+        const sampletext = parsedtext;
+        if (sampletext == null) {
+          return null;
+        }
+        //regex to remove all the special characters and extract only 11 digit numbers
+        const regex = /\b[0-9]{11}\b/g;
+        const found = sampletext.match(regex);
+        if (found == null) {
+          return null;
+        }
+        return found;
+      };
+
+      // We only get to work when the vision button is clicked
+      document
+        .querySelector("#vision_button")
+        .addEventListener("click", (evt) => {
+          // Send image to google to analyze
+          // Documentation of the annotate feature: https://cloud.google.com/vision/docs/reference/rest/v1/images/annotate
+          if (base64Image == null) {
+            alert("Please select an image");
+          } else {
+            fetch(
+              "https://vision.googleapis.com/v1/images:annotate?key=AIzaSyAVDYLYcf1vWZWU4kq5YPznOhGOZtSM3zA",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  requests: [
+                    {
+                      features: {
+                        type: "TEXT_DETECTION",
+                      },
+                      image: {
+                        // have to extract only the image data from dataURL
+                        content: base64Image.split(",")[1],
+                      },
+                    },
+                  ],
+                }),
+              }
+            )
+              .then((resp) => {
+                return resp.json();
+              })
+              .then((json) => {
+                // Simply output the response
+                console.log(json);
+                results.innerHTML = "";
+
+                json.responses[0].textAnnotations.forEach((annotation) => {
+                  let description = document.createElement("span");
+                  let score = document.createElement("span");
+
+                  let div = document.createElement("div");
+                  description.innerText = annotation.description;
+                  score.innerText = annotation.score;
+
+                  div.append(description, score);
+
+                  results.append(div);
+                });
+              });
+          }
+        });
+    </script>
+  </body>
+</html>
